@@ -16,16 +16,15 @@ class DiceParser {
         while (iterator.hasNext()) {
             new = parse(new.second?.takeUnless { it in functionalSymbols }?.toString() ?: "", iterator)
             arr += filterPair(new, arr.lastOrNull())
-            if(!iterator.hasNext()) arr += new.second.toString() to null
+            if (!iterator.hasNext()) arr += new.second.toString() to null
         }
         arr.removeAll { it.first.isBlank() && it.second == null }
         return parse(arr.iterator())
     }
 
-    private fun filterPair(new: Pair<String, Char?>, prev: Pair<String, Char?>?) = (
-            if (new.first == prev?.second?.toString() && new.second != null) ""
-            else new.first
-            ) to if (new.second?.isDigit() == true) null else new.second
+    private fun filterPair(new: Pair<String, Char?>, prev: Pair<String, Char?>?) =
+        (if (new.first == prev?.second?.toString() && new.second != null) ""
+        else new.first) to if (new.second?.isDigit() == true) null else new.second
 
     private fun parse(itr: Iterator<Pair<String, Char?>>): DiceComponent<*, *, *> {
         var workObject: DiceComponent<*, *, *>? = null
@@ -34,14 +33,16 @@ class DiceParser {
             val (s, c) = itr.next()
             fun value() = if (c == '(') parseClosedGroup(s, itr) else parseNumber(s)
             workObject = when {
-                diceCompatible(currOp, workObject) -> parseDiceMods(workObject as DiceFunction<*,*>, currOp!!, value())
-                syntaxValid(currOp, s, c) -> throw DiceParseException("Attempt to perform operation on end parenthesis.")
-                mathSymbol(currOp) && reorder(currOp!!, workObject) -> parseMath(workObject!!, currOp.first(), value()!!)
+                diceCompatible(currOp, workObject) -> parseDiceMods(workObject as DiceFunction<*, *>, currOp!!, value())
+                syntaxValid(currOp, s, c) -> throw DiceParseException("Operation on end parenthesis.")
+                mathSymbol(currOp) && reorder(currOp!!, workObject) -> parseMath(
+                    workObject!!, currOp.first(), value()!!
+                )
                 mathSymbol(currOp) && workObject is DiceMath -> DiceMath(
-                            workObject.a as DiceComponent<*,*,*>,
-                            parseMath(workObject.b as DiceComponent<*, *, *>, currOp!!.first(), value()!!),
-                            workObject.function
-                        )
+                    workObject.a as DiceComponent<*, *, *>,
+                    parseMath(workObject.b as DiceComponent<*, *, *>, currOp!!.first(), value()!!),
+                    workObject.function
+                )
                 currOp == "d" -> parseDice(workObject!!, s, c, itr)
                 currOp == "(" -> workObject
                 !validateWord(s) -> throw DiceParseException("Unrecognized word: `$s`.")
@@ -67,23 +68,25 @@ class DiceParser {
 
     private fun validateWord(word: String) = word.isBlank() || word.toDoubleOrNull() != null || word in diceSymbols
 
-    private fun syntaxValid(currOp: String?, s: String, c: Char?) = currOp != null && currOp != "(" && s.isBlank() && c == ')'
+    private fun syntaxValid(currOp: String?, s: String, c: Char?) =
+        currOp != null && currOp != "(" && s.isBlank() && c == ')'
 
     private fun mathSymbol(currOp: String?) = currOp?.length == 1 && currOp.first() in mathSymbols
 
-    private fun diceCompatible(currOp: String?, workObject: DiceComponent<*,*,*>?) = when {
+    private fun diceCompatible(currOp: String?, workObject: DiceComponent<*, *, *>?) = when {
         currOp !in diceSymbols -> false
         workObject is DiceFunction -> true
         else -> throw DiceParseException("$workObject is not a valid array of dice")
     }
 
-    private fun reorder(currOp: String, workObject: DiceComponent<*,*,*>?) = workObject !is DiceMath ||  when (workObject.function) {
-        PLUS -> true
-        MINUS -> true
-        MULTIPLY -> currOp !in listOf("+", "-")
-        DIVIDE -> currOp !in listOf("+", "-")
-        EXPONENT -> false
-    }
+    private fun reorder(currOp: String, workObject: DiceComponent<*, *, *>?) =
+        workObject !is DiceMath || when (workObject.function) {
+            PLUS -> true
+            MINUS -> true
+            MULTIPLY -> currOp !in listOf("+", "-")
+            DIVIDE -> currOp !in listOf("+", "-")
+            EXPONENT -> false
+        }
 
     private fun parseDice(a: DiceComponent<*, *, *>, s: String, c: Char?, itr: Iterator<Pair<String, Char?>>) =
         a d when {

@@ -1,7 +1,11 @@
 package pathfinder.diceSyntax
 
-import pathfinder.diceSyntax.DiceFunction.*
-import pathfinder.diceSyntax.DiceMath.MathFunction.*
+import pathfinder.diceSyntax.components.DiceArray
+import pathfinder.diceSyntax.components.DiceComponent
+import pathfinder.diceSyntax.components.DiceFunction.*
+import pathfinder.diceSyntax.components.DiceMath
+import pathfinder.diceSyntax.components.DiceMath.MathFunction.*
+import pathfinder.diceSyntax.components.DiceNumber
 
 infix fun DiceComponent<*, *, *>.d(o: DiceComponent<*, *, *>) = DiceRoll(this, o)
 infix fun Int.d(o: DiceComponent<*, *, *>) = DiceRoll(DiceNumber(this), o)

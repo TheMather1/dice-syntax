@@ -1,4 +1,4 @@
-package pathfinder.diceSyntax
+package pathfinder.diceSyntax.components
 
 import kotlin.random.Random
 
@@ -18,4 +18,6 @@ class Die(val sides: Int) : Comparable<Die>, Number() {
     override fun toLong() = value.toLong()
     override fun toShort() = value.toShort()
     override fun compareTo(other: Die) = value.compareTo(other.value)
+
+    override fun toString() = value.toString()
 }

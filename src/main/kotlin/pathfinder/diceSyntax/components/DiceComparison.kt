@@ -1,7 +1,7 @@
-package pathfinder.diceSyntax
+package pathfinder.diceSyntax.components
 
 sealed class DiceComparison<B : DiceComponent<*, *, *>>(dice: DiceComponent<*, *, DiceArray>, b: B) :
-    DiceComponent<DiceComponent<*, *, DiceArray>, B, DiceNumber>(dice, b, 10) {
+    DiceComponent<DiceComponent<*, *, DiceArray>, B, DiceNumber>(dice, b) {
 
     class HigherThan(dice: DiceComponent<*, *, DiceArray>, value: DiceComponent<*, *, *>) :
         DiceComparison<DiceComponent<*, *, *>>(dice, value) {

@@ -1,6 +1,6 @@
-package pathfinder.diceSyntax
+package pathfinder.diceSyntax.components
 
-class DiceNumber(private val value: Number) : DiceComponent<Nothing?, Nothing?, DiceNumber>(null, null, 0) {
+class DiceNumber(private val value: Number) : DiceComponent<Nothing?, Nothing?, DiceNumber>(null, null) {
     override fun invoke() = this
 
     override fun toByte() = value.toByte()
@@ -10,4 +10,6 @@ class DiceNumber(private val value: Number) : DiceComponent<Nothing?, Nothing?, 
     override fun toInt() = value.toInt()
     override fun toLong() = value.toLong()
     override fun toShort() = value.toShort()
+
+    override fun toString() = value.toString().replace("\\.0+$".toRegex(), "")
 }

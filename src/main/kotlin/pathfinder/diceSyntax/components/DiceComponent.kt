@@ -1,10 +1,7 @@
-package pathfinder.diceSyntax
+package pathfinder.diceSyntax.components
 
-abstract class DiceComponent<A, B, C : Number>(val a: A, val b: B, private val priority: Int) :
-    Comparable<DiceComponent<*, *, *>>, Number() {
+abstract class DiceComponent<A, B, C : Number>(val a: A, val b: B,) : Number() {
     abstract operator fun invoke(): C
-
-    override fun compareTo(other: DiceComponent<*, *, *>) = priority.compareTo(other.priority)
 
     override fun toByte(): Byte = this().toByte()
     override fun toChar(): Char = this().toChar()

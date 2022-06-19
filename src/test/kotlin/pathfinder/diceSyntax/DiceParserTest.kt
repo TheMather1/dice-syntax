@@ -7,7 +7,7 @@ internal class DiceParserTest {
 
     @Test
     fun `Test parsing`() {
-        val dice = parser.parse("min(300d20kh50d20!+10, 20)d50")
+        val dice = parser.parse("((2d4)d6)*2^5")
         println(dice)
         println(dice())
     }

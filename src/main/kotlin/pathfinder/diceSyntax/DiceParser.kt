@@ -8,6 +8,7 @@ import pathfinder.diceSyntax.components.DiceSelector.Min
 
 class DiceParser {
 
+    private var depth = 0
     fun parse(string: String): DiceComponent<*, *, *> {
         val iterator = string.iterator()
         var new: Pair<String, Char?> = "" to null
@@ -15,13 +16,16 @@ class DiceParser {
         while (iterator.hasNext()) {
             new = parse(new.second?.takeUnless { it in functionalSymbols }?.toString() ?: "", iterator)
             arr += filterPair(new, arr.lastOrNull())
+            if(!iterator.hasNext()) arr += new.second.toString() to null
         }
         arr.removeAll { it.first.isBlank() && it.second == null }
         return parse(arr.iterator())
     }
 
-    private fun filterPair(new: Pair<String, Char?>, prev: Pair<String, Char?>?) =
-        (if (new.first == prev?.second?.toString() && new.second != null) "" else new.first) to if (new.second?.isDigit() == true) null else new.second
+    private fun filterPair(new: Pair<String, Char?>, prev: Pair<String, Char?>?) = (
+            if (new.first == prev?.second?.toString() && new.second != null) ""
+            else new.first
+            ) to if (new.second?.isDigit() == true) null else new.second
 
     private fun parse(itr: Iterator<Pair<String, Char?>>): DiceComponent<*, *, *> {
         var workObject: DiceComponent<*, *, *>? = null
@@ -29,23 +33,18 @@ class DiceParser {
         while (itr.hasNext() && currOp != ")") {
             val (s, c) = itr.next()
             fun value() = if (c == '(') parseClosedGroup(s, itr) else parseNumber(s)
-            workObject = if (currOp != null) {
-                when {
-                    currOp in diceSymbols -> if (workObject is DiceFunction) parseDiceMods(workObject, currOp, value())
-                    else throw DiceParseException("$workObject is not a valid array of dice")
-                    currOp.length == 1 && currOp.first() in mathSymbols -> {
-                        if (workObject !is DiceMath || reorder(currOp, workObject))
-                            parseMath(workObject!!, currOp.first(), value()!!)
-                        else DiceMath(
-                            workObject.a as DiceComponent<*, *, *>,
-                            parseMath(workObject.b as DiceComponent<*, *, *>, currOp.first(), value()!!),
+            workObject = when {
+                diceCompatible(currOp, workObject) -> parseDiceMods(workObject as DiceFunction<*,*>, currOp!!, value())
+                syntaxValid(currOp, s, c) -> throw DiceParseException("Attempt to perform operation on end parenthesis.")
+                mathSymbol(currOp) && reorder(currOp!!, workObject) -> parseMath(workObject!!, currOp.first(), value()!!)
+                mathSymbol(currOp) && workObject is DiceMath -> DiceMath(
+                            workObject.a as DiceComponent<*,*,*>,
+                            parseMath(workObject.b as DiceComponent<*, *, *>, currOp!!.first(), value()!!),
                             workObject.function
                         )
-                    }
-                    currOp == "d" -> parseDice(workObject!!, s, c, itr)
-                    else -> workObject
-                }
-            } else when {
+                currOp == "d" -> parseDice(workObject!!, s, c, itr)
+                currOp == "(" -> workObject
+                !validateWord(s) -> throw DiceParseException("Unrecognized word: `$s`.")
                 workObject != null && s.isNotBlank() -> throw DiceParseException("Missing operation between $workObject and $s.")
                 c == '(' -> parseClosedGroup(s, itr)
                 s.toDoubleOrNull() != null -> parseNumber(s)
@@ -53,10 +52,32 @@ class DiceParser {
             }
             currOp = s.takeIf { it in diceSymbols } ?: c?.toString()
         }
-        return workObject!!
+        return when {
+            workObject == null -> throw DiceParseException("Reached end state with no object.")
+            currOp == ")" && depth > 0 -> {
+                depth--
+                workObject
+            }
+            currOp == ")" && depth <= 0 -> throw DiceParseException("Unmatched end parentheses.")
+            !itr.hasNext() && depth == 0 -> workObject
+            !itr.hasNext() && depth != 0 -> throw DiceParseException("Unmatched start parentheses.")
+            else -> throw DiceParseException("Invalid end state.")
+        }
     }
 
-    private fun reorder(currOp: String, workObject: DiceMath<*,*>) = when (workObject.function) {
+    private fun validateWord(word: String) = word.isBlank() || word.toDoubleOrNull() != null || word in diceSymbols
+
+    private fun syntaxValid(currOp: String?, s: String, c: Char?) = currOp != null && currOp != "(" && s.isBlank() && c == ')'
+
+    private fun mathSymbol(currOp: String?) = currOp?.length == 1 && currOp.first() in mathSymbols
+
+    private fun diceCompatible(currOp: String?, workObject: DiceComponent<*,*,*>?) = when {
+        currOp !in diceSymbols -> false
+        workObject is DiceFunction -> true
+        else -> throw DiceParseException("$workObject is not a valid array of dice")
+    }
+
+    private fun reorder(currOp: String, workObject: DiceComponent<*,*,*>?) = workObject !is DiceMath ||  when (workObject.function) {
         PLUS -> true
         MINUS -> true
         MULTIPLY -> currOp !in listOf("+", "-")
@@ -90,13 +111,15 @@ class DiceParser {
         else -> throw DiceParseException("Not a number: $string")
     }
 
-    private fun parseClosedGroup(string: String, itr: Iterator<Pair<String, Char?>>) = when (string) {
-        "" -> DiceGroup(parse(itr))
-        "max" -> max(parseDualParameter(itr))
-        "min" -> min(parseDualParameter(itr))
-        "ceil" -> DiceRound.Ceil(parse(itr))
-        "floor" -> DiceRound.Floor(parse(itr))
-        else -> throw DiceParseException("Unknown function $string().")
+    private fun parseClosedGroup(string: String, itr: Iterator<Pair<String, Char?>>) = depth++.let {
+        when (string) {
+            "" -> DiceGroup(parse(itr))
+            "max" -> max(parseDualParameter(itr))
+            "min" -> min(parseDualParameter(itr))
+            "ceil" -> DiceRound.Ceil(parse(itr))
+            "floor" -> DiceRound.Floor(parse(itr))
+            else -> throw DiceParseException("Unknown function $string().")
+        }
     }
 
     private fun parseMath(a: DiceComponent<*, *, *>, operation: Char, o: DiceComponent<*, *, *>) = when (operation) {

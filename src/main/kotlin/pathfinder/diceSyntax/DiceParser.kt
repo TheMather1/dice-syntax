@@ -16,7 +16,7 @@ class DiceParser {
         while (iterator.hasNext()) {
             new = parse(new.second?.takeUnless { it in functionalSymbols }?.toString() ?: "", iterator)
             arr += filterPair(new, arr.lastOrNull())
-            if (!iterator.hasNext()) arr += new.second.toString() to null
+            if (!iterator.hasNext() && new.second != null) arr += new.second.toString() to null
         }
         arr.removeAll { it.first.isBlank() && it.second == null }
         return parse(arr.iterator())
@@ -49,7 +49,8 @@ class DiceParser {
                 workObject != null && s.isNotBlank() -> throw DiceParseException("Missing operation between $workObject and $s.")
                 c == '(' -> parseClosedGroup(s, itr)
                 s.toDoubleOrNull() != null -> parseNumber(s)
-                else -> throw DiceParseException("Unrecognized word: `$s`.")
+                s.isBlank() && c == null -> workObject
+                else -> throw DiceParseException("Unrecognized dice syntax: `$s`.")
             }
             currOp = s.takeIf { it in diceSymbols } ?: c?.toString()
         }
@@ -153,7 +154,7 @@ class DiceParser {
             curr.toDoubleOrNull() != null && c == '.' -> throw DiceParseException("A number has more than one decimal point.")
             c.isLetter() -> parse(curr + c, iterator)
             else -> throw DiceParseException("Unrecognized symbol: $c")
-        }
+        }.run { (first.takeUnless { it == "null" } ?: "") to second }
     }
 
     private fun max(dual: Pair<DiceComponent<*, *, *>, DiceComponent<*, *, *>>) = Max(dual.first, dual.second)

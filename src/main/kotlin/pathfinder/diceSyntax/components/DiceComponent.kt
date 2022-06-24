@@ -1,6 +1,8 @@
 package pathfinder.diceSyntax.components
 
-abstract class DiceComponent<A, B, C : Number>(val a: A, val b: B,) : Number() {
+import java.io.Serializable
+
+abstract class DiceComponent<A, B, C : Number>(val a: A, val b: B,) : Number(), Serializable {
     abstract operator fun invoke(): C
 
     override fun toByte(): Byte = this().toByte()

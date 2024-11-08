@@ -32,11 +32,12 @@ class DiceParser {
         while (itr.hasNext() && currOp != ")") {
             val (s, c) = itr.next()
             fun value() = if (c == '(') parseClosedGroup(s, itr) else parseNumber(s)
+            @Suppress("USELESS_CAST") //Case mathSymbol(currOp) && workObject is DiceMath throws without cast.
             workObject = when {
                 diceCompatible(currOp, workObject) -> parseDiceMods(workObject as DiceFunction<*, *>, currOp!!, value())
                 syntaxValid(currOp, s, c) -> throw DiceParseException("Operation on end parenthesis.")
-                mathSymbol(currOp) && reorder(currOp!!, workObject) -> parseMath(
-                    workObject!!, currOp.first(), value()!!
+                mathSymbol(currOp) && workObject != null && reorder(currOp!!, workObject) -> parseMath(
+                    workObject, currOp.first(), value()!!
                 )
                 mathSymbol(currOp) && workObject is DiceMath -> DiceMath(
                     workObject.a as DiceComponent<*, *, *>,
@@ -48,7 +49,9 @@ class DiceParser {
                 !validateWord(s) -> throw DiceParseException("Unrecognized word: `$s`.")
                 workObject != null && s.isNotBlank() -> throw DiceParseException("Missing operation between $workObject and $s.")
                 c == '(' -> parseClosedGroup(s, itr)
+                (currOp+s).toDoubleOrNull() != null -> parseNumber(currOp+s)
                 s.toDoubleOrNull() != null -> parseNumber(s)
+                s.isBlank() && c == '-' -> workObject
                 s.isBlank() && c == null -> workObject
                 else -> throw DiceParseException("Unrecognized dice syntax: `$s`.")
             }
@@ -146,10 +149,10 @@ class DiceParser {
                 if (!hasNext()) curr to null
                 else nextChar().takeUnless { it.isWhitespace() }?.let { curr to it }
             }
-            c in functionalSymbols -> curr to c
+            c == '-' || c in functionalSymbols -> curr to c
             curr.toIntOrNull() == null && c.isDigit() -> curr to c
             curr.toIntOrNull() != null && c.isLetter() -> curr to c
-            curr.toIntOrNull() != null && (c.isDigit() || c == '.') -> parse(curr + c, iterator)
+            (curr.toIntOrNull() != null || curr == "-") && (c.isDigit() || c == '.') -> parse(curr + c, iterator)
             curr.toDoubleOrNull() != null && c.isDigit() -> parse(curr + c, iterator)
             curr.toDoubleOrNull() != null && c == '.' -> throw DiceParseException("A number has more than one decimal point.")
             c.isLetter() -> parse(curr + c, iterator)
@@ -175,6 +178,6 @@ class DiceParser {
     companion object {
         val mathSymbols = arrayOf('+', '-', '*', '/', '^')
         val diceSymbols = arrayOf("!", "r", "kh", "kl", "dh", "dl")
-        val functionalSymbols = mathSymbols + '!' + '(' + ')' + ',' + 'd'
+        val functionalSymbols = mathSymbols.filterNot { it == '-' } + '!' + '(' + ')' + ',' + 'd'
     }
 }

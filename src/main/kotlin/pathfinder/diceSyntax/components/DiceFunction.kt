@@ -1,12 +1,16 @@
 package pathfinder.diceSyntax.components
 
+import kotlin.math.absoluteValue
+
 sealed class DiceFunction<A : DiceComponent<*, *, *>?, B : DiceComponent<*, *, *>?>(a: A, b: B) :
     DiceComponent<A, B, DiceArray>(a, b) {
     abstract override operator fun invoke(): DiceArray
 
     class DiceRoll<B : DiceComponent<*, *, *>>(a: DiceComponent<*, *, *>?, b: B) :
         DiceFunction<DiceComponent<*, *, *>, B>(a ?: one, b) {
-        override fun invoke() = DiceArray((1..a.toInt()).map { Die(b.toInt()) })
+        override fun invoke() = a.toInt().let{
+            DiceArray((1..it.absoluteValue).map { Die(b.toInt()) }, it < 0)
+        }
         override fun toString() = "${a}d$b"
     }
 

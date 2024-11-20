@@ -10,6 +10,7 @@ class DiceParser {
 
     private var depth = 0
     fun parse(string: String): DiceComponent<*, *, *> {
+        depth = 0
         val iterator = string.iterator()
         var new: Pair<String, Char?> = "" to null
         val arr = mutableListOf<Pair<String, Char?>>()
@@ -85,10 +86,8 @@ class DiceParser {
 
     private fun reorder(currOp: String, workObject: DiceComponent<*, *, *>?) =
         workObject !is DiceMath || when (workObject.function) {
-            PLUS -> true
-            MINUS -> true
-            MULTIPLY -> currOp !in listOf("+", "-")
-            DIVIDE -> currOp !in listOf("+", "-")
+            PLUS, MINUS -> true
+            MULTIPLY, DIVIDE -> currOp !in listOf("+", "-")
             EXPONENT -> false
         }
 
@@ -108,7 +107,7 @@ class DiceParser {
             "kl" -> KeepLowest(workObject, o)
             "dh" -> DropHighest(workObject, o)
             "dl" -> DropLowest(workObject, o)
-            else -> TODO()
+            else -> throw DiceParseException("Unrecognized dice modifier: $operation")
         }
 
     private fun parseNumber(string: String) = when {
